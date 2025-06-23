@@ -10,20 +10,24 @@ import smtplib
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.header import Header
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TypedDict
 import re
 import html
 from io import BytesIO
 from PIL import Image
+from PIL.Image import Resampling
 import base64
 from dotenv import load_dotenv
 import os
 import subprocess
-import imghdr
 from jinja2 import Environment, FileSystemLoader
 
-LarzacEvent = dict[str, Any]
+class LarzacEvent(TypedDict):
+    title: str
+    description: str
+    start_date: str
+    url: str
+    image: str | dict[str, str] | None
 
 
 class LarzacEventsMailer:
@@ -197,7 +201,7 @@ class LarzacEventsMailer:
             new_size = (int(width * ratio), int(height * ratio))
             
             # Redimensionner l'image
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            img = img.resize(new_size, Resampling.LANCZOS) # type: ignore
             
             # Convertir en base64
             buffered = BytesIO()
@@ -220,22 +224,22 @@ class LarzacEventsMailer:
         Charge le template MJML et le remplit avec les données
         """
         # Préparer les événements pour le template
-        template_events = []
+        template_events: List[Dict[str, Any]] = []
         for event in events:
-            title = self.clean_html_entities(event.get('title', 'Événement sans titre'))
-            description = self.truncate_description(event.get('description', ''))
-            start_date_formatted = self.format_date(event.get('start_date', ''))
-            event_url = event.get('url', '')
+            title: str = self.clean_html_entities(event.get('title', 'Événement sans titre'))
+            description: str = self.truncate_description(event.get('description', ''))
+            start_date_formatted: str = self.format_date(event.get('start_date', ''))
+            event_url: str = event.get('url', '')
             
             # Traiter l'image
-            image_url = ""
+            image_url: str | None = ""
             if 'image' in event and event['image']:
                 if isinstance(event['image'], dict):
-                    image_url = event['image'].get('url', '')
+                    image_url = event['image'].get('url', "")
                 else:
                     image_url = str(event['image'])
             image_base64 = self.process_image(image_url) if image_url else ""
-            
+
             template_events.append({
                 'title': title,
                 'description': description,
@@ -267,6 +271,7 @@ class LarzacEventsMailer:
             mjml_path = mjml_file.name
         html_path = mjml_path.replace('.mjml', '.html')
         try:
+            # Supprimer les avertissements de dépréciation Node.js
             subprocess.run(['mjml', mjml_path, '-o', html_path], check=True)
             with open(html_path, 'r', encoding='utf-8') as f:
                 html = f.read()
@@ -308,7 +313,7 @@ class LarzacEventsMailer:
             msg = MIMEMultipart('related')
             msg['From'] = self.email
             msg['To'] = recipient_email
-            subject = f"🎭 Événements Larzac - Semaine du {self.format_date(start_date + 'T00:00:00')}"
+            subject = f"L'agenda de la brebis du {self.format_date(start_date + 'T00:00:00')}"
             msg['Subject'] = subject
 
             html_part = MIMEText(html_content, 'html', 'utf-8')
@@ -342,7 +347,11 @@ def load_logo_base64_uri(logo_path: str) -> str:
     try:
         with open(logo_path, 'rb') as f:
             img_bytes = f.read()
-        img_type = imghdr.what(None, img_bytes) or 'png'
+        # Utiliser PIL pour détecter le format d'image
+        img = Image.open(BytesIO(img_bytes))
+        img_type = img.format.lower() if img.format else 'png'
+        if img_type == 'jpeg':
+            img_type = 'jpg'
         img_b64 = base64.b64encode(img_bytes).decode()
         return f"data:image/{img_type};base64,{img_b64}"
     except Exception as e:
@@ -363,10 +372,15 @@ def main():
         'password': str(os.getenv('SMTP_PASSWORD', ''))
     }
     # Email du destinataire
-    RECIPIENT_EMAIL = 'anaisallio@yahoo.fr'  # REMPLACER
+    RECIPIENT_EMAIL = str(os.getenv('RECIPIENT_EMAIL', ''))
     print("=== 🎭 Récupération des événements Larzac ===")
     # Initialisation du mailer
-    mailer = LarzacEventsMailer(**SMTP_CONFIG)
+    mailer = LarzacEventsMailer(
+        smtp_server=str(SMTP_CONFIG['smtp_server']) if SMTP_CONFIG['smtp_server'] else '',
+        smtp_port=int(SMTP_CONFIG['smtp_port']) if SMTP_CONFIG['smtp_port'] else 1025,
+        email=str(SMTP_CONFIG['email']) if SMTP_CONFIG['email'] else '',
+        password=str(SMTP_CONFIG['password']) if SMTP_CONFIG['password'] else ''
+    )
     # Récupération des événements
     events = mailer.fetch_events()
     # Charger le logo en base64 URI
