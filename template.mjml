@@ -1,0 +1,63 @@
+<mjml>
+  <mj-body background-color="#f9f9f9">
+    <mj-section background-color="#fff" border-radius="10px 10px 0 0" padding="30px 10px 20px 10px">
+      <mj-column width="150px">
+        <mj-image src="{{ logo_base64 }}" alt="Logo" width="150px" padding="0" />
+      </mj-column>
+      <mj-column>
+        <mj-text font-size="20px" font-weight="300" color="#2c3e50" align="left" padding-bottom="4px">{{ header_title }}</mj-text>
+        <mj-text font-size="18px" color="#667eea" align="left" font-weight="500">{{ header_subtitle }}</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-wrapper background-color="#fff" border-radius="0 0 10px 10px" padding="0">
+      {% if events %}
+        {% for event in events %}
+          <mj-section padding-bottom="0">
+            <mj-column width="150px" vertical-align="middle">
+              {% if event.image_base64 %}
+                <mj-image src="{{ event.image_base64 }}" alt="{{ event.title }}" width="150px" height="auto" padding="0" border-radius="8px" />
+              {% else %}
+                <mj-image src="" alt="🎭" width="150px" height="auto" padding="0" border-radius="8px" />
+              {% endif %}
+            </mj-column>
+            <mj-column>
+              <mj-text font-size="18px" color="#2c3e50" font-weight="bold" padding-bottom="4px">
+                <a href="{{ event.url }}" target="_blank" style="color: inherit; text-decoration: none;">{{ event.title }}</a>
+              </mj-text>
+              <mj-text color="#667eea" font-size="15px" font-weight="500" padding-bottom="8px">📅 {{ event.start_date_formatted }}</mj-text>
+              <mj-text color="#555" font-size="15px">
+                {{ event.description }}
+            </mj-text>
+            <mj-text color="#555" font-size="15px">
+                {% if event.url %}
+                  <a href="{{ event.url }}" target="_blank" style="color: #667eea; text-decoration: none;">Toute l'info ici →</a>
+                {% endif %}
+              </mj-text>
+            </mj-column>
+          </mj-section>
+          {% if not loop.last %}
+            <mj-section>
+              <mj-column>
+                <mj-divider border-color="#eee" padding="0 0 8px 0" />
+              </mj-column>
+            </mj-section>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <mj-section>
+          <mj-column>
+            <mj-text align="center" color="#666">😴 Aucun événement prévu<br/>Aucun événement n'est programmé pour la semaine prochaine.</mj-text>
+          </mj-column>
+        </mj-section>
+      {% endif %}
+    </mj-wrapper>
+    <mj-section background-color="#f8f9fa" border-radius="10px" padding="20px">
+      <mj-column>
+        <mj-text align="center" color="#666" font-size="14px">
+          <a href="https://larzac.org" target="_blank" style="color: #667eea; text-decoration: none;">🌐 Visiter le site Larzac.org</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml> 
